@@ -1,0 +1,1 @@
+﻿import-csv '..\Student Lists\TDM\AWG1_ICTNWK401.csv' | Select @{n="StudentID";e="Student ID"},@{n="FirstName";e="Given Name"},@{n="MiddleName";e="Middle Name/s"},@{n="LastName";e="Family Name"},Title,@{n="Group";e={"AWG1"}} | New-StudentUser

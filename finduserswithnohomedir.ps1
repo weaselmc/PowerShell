@@ -1,0 +1,2 @@
+﻿#users with a description but no home dir
+$users = Get-ADUser -Filter * -SearchBase  "DC=TDM,DC=LOCAL"  -Properties HomeDirectory, Description | select Name,HomeDirectory,Description | ? { ($_.HomeDirectory -eq $null) -and ($_.Description -ne $null)}

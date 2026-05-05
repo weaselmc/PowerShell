@@ -1,0 +1,1 @@
+﻿import-csv '..\Student Lists\TDM\AWD7_ICTSAS505.csv' | Select @{n="EmailAddress";e={$_."Student ID"+"@tafe.wa.edu.au"}},@{n="Name";e={$_."Given Name" + " " + $_."Family Name"}} | Export-Csv HelpDeskList.csv
