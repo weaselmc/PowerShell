@@ -746,7 +746,7 @@ New-20744VM -User Student
         process{
            
 
-            if ((Get-Module VMware.PowerCLI) -eq $null){
+            if ($null -eq (Get-Module VMware.PowerCLI)){
                 Import-Module VMware.PowerCLI
             }
 
@@ -766,7 +766,7 @@ New-20744VM -User Student
                 New-VM -Template 20744C-LON-HOST1 -Name $Server -Datastore Net_Datastore -Location Networking -ResourcePool Resources                   
                 Start-VM $Server
                 $vmIP = $null
-                while ([string]::IsNullOrEmpty($vmIP)) {$vmIP = Get-VMGuest $Server | select -ExpandProperty IPAddress | Where-Object {$_ -like "172.20.*"}}
+                while ([string]::IsNullOrEmpty($vmIP)) {$vmIP = Get-VMGuest $Server | Select-Object -ExpandProperty IPAddress | Where-Object {$_ -like "172.20.*"}}
                 #create rdpfile
                 New-VIPermission -Entity $Server -Principal $Username -Role "VirtualMachineConsoleUser" -Propagate $true
                 Write-Host "Creating $RDPFilePath\$Group\$User\$Server.rdp" -ForegroundColor Yellow 
@@ -844,7 +844,7 @@ New-20744VM -User Student
                 }
                 Start-VM $Server
                 $vmIP = $null
-                while ([string]::IsNullOrEmpty($vmIP)) {$vmIP = Get-VMGuest $Server | select -ExpandProperty IPAddress | Where-Object {$_ -like "172.20.*"}}
+                while ([string]::IsNullOrEmpty($vmIP)) {$vmIP = Get-VMGuest $Server | Select-Object -ExpandProperty IPAddress | Where-Object {$_ -like "172.20.*"}}
                 #create rdpfile
                 New-VIPermission -Entity $Server -Principal $Username -Role "VirtualMachineConsoleUser" -Propagate $true
                 Write-Host "Creating $RDPFilePath\$Group\$User\$Server.rdp" -ForegroundColor Yellow 
@@ -975,7 +975,7 @@ Function New-20740VM{
             process{
                
     
-                if ((Get-Module VMware.PowerCLI) -eq $null){
+                if ($null -eq (Get-Module VMware.PowerCLI)){
                     Import-Module VMware.PowerCLI
                 }
     
@@ -1001,7 +1001,7 @@ Function New-20740VM{
                     New-VIPermission -Entity $Server -Principal $Username -Role "VirtualMachineConsoleUser" -Propagate $true
                     Start-VM $Server
                     $vmIP = $null
-                    while ([string]::IsNullOrEmpty($vmIP)) {$vmIP = Get-VMGuest $Server | select -ExpandProperty IPAddress | Where-Object {$_ -like "172.20.*"}}
+                    while ([string]::IsNullOrEmpty($vmIP)) {$vmIP = Get-VMGuest $Server | Select-Object -ExpandProperty IPAddress | Where-Object {$_ -like "172.20.*"}}
                     #create rdpfile                
                     Write-Host "Creating $RDPFilePath\$Group\$User\$Server.rdp" -ForegroundColor Yellow 
                     New-RDPFile -Server $Server -Path "$RDPFilePath\$Group\$User" -IP $vmIP                    
@@ -2053,7 +2053,7 @@ New-20744VM -User Student
                 New-VIPermission -Entity $Server -Principal $Username -Role "VirtualMachineConsoleUser" -Propagate $true
                 Start-VM $Server
                 $vmIP = $null
-                while ([string]::IsNullOrEmpty($vmIP)) {$vmIP = Get-VMGuest $Server | select -ExpandProperty IPAddress | Where-Object {$_ -like "172.20.*"}}
+                while ([string]::IsNullOrEmpty($vmIP)) {$vmIP = Get-VMGuest $Server | Select-Object -ExpandProperty IPAddress | Where-Object {$_ -like "172.20.*"}}
                 #create urlfile                
                 Write-Host "Creating $RDPFilePath\$Group\$User\$Server.url" -ForegroundColor Yellow                 
                 New-UrlShortcut -Server $Server -Path "$FilePath\$Group\$User" -IP $vmIP                    
@@ -2384,7 +2384,7 @@ Function Stop-LabComputers
     $labs = "A103", "A104", "A105", "A106", "A114", "A116", "A118", "A133", "A135", "A137", "A143"
     
     foreach ($lab in $labs){
-        1 .. 9 | % {if(Test-Connection "$lab-0$_" -Count 1 -Quiet){
+        1 .. 9 | ForEach-Object {if(Test-Connection "$lab-0$_" -Count 1 -Quiet){
                 Write-Host -ForegroundColor Green "$lab-0$_ -> Up"
                 Invoke-Command -ScriptBlock {Stop-Computer -Force -ErrorAction SilentlyContinue } -ComputerName "$lab-0$_" -Credential $cred -AsJob
             } 
@@ -2392,7 +2392,7 @@ Function Stop-LabComputers
                 Write-Host -ForegroundColor Red "$lab-0$_ -> Down"
             }
         }
-        10 .. 30 | % {if(Test-Connection "$lab-$_" -Count 1 -Quiet){
+        10 .. 30 | ForEach-Object {if(Test-Connection "$lab-$_" -Count 1 -Quiet){
                 Write-Host -ForegroundColor Green "$lab-$_ -> Up"
                 Invoke-Command -ScriptBlock {Stop-Computer -Force -ErrorAction SilentlyContinue} -ComputerName "$lab-$_" -Credential $cred -AsJob
             }
@@ -2460,8 +2460,8 @@ Function Get-LoggedInUsers
     [String]$Room
     )
     # Define the list of remote computers
-    $computers = 1..9 | % {"$Room-0$_"}   # Replace with your computer names or IP addresses
-    $computers += 10..25 | % {"$Room-$_"}
+    $computers = 1..9 | ForEach-Object {"$Room-0$_"}   # Replace with your computer names or IP addresses
+    $computers += 10..25 | ForEach-Object {"$Room-$_"}
 
     # Loop through each computer
     foreach ($computer in $computers) {
@@ -2486,15 +2486,20 @@ Function Get-LoggedInUsers
     }
 }
 
-function Invite-TAFEUser{
-param(
-  [Parameter(Mandatory=$true)]
-  $Users
-)
+Function New-TAFEUserInvitation{
+
+    [CmdletBinding()]
+    param(
+        [Parameter(
+            Mandatory = $true,
+            ValueFromPipeline = $true
+        )]
+        [object[]]$Users
+    )
+
     foreach ($User in $Users) {
         try {
-            $Invitation = New-MgInvitation `
-                -InvitedUserEmailAddress $User `
+            New-MgInvitation -InvitedUserEmailAddress $User `
                 -InviteRedirectUrl "https://portal.azure.com" `
                 -InvitedUserMessageInfo @{
                     CustomizedMessageBody = 
