@@ -2486,6 +2486,36 @@ Function Get-LoggedInUsers
     }
 }
 
+function Invite-TAFEUser{
+param(
+  [Parameter(Mandatory=$true)]
+  $Users
+)
+    foreach ($User in $Users) {
+        try {
+            $Invitation = New-MgInvitation `
+                -InvitedUserEmailAddress $User `
+                -InviteRedirectUrl "https://portal.azure.com" `                
+                -InvitedUserMessageInfo @{
+                    CustomizedMessageBody = 
+                    "Hi,
+                        You have been invited to access our Azure tenant.
+                        If you have any issues signing in, please contact adt@nmtafe.wa.edu.au.
+
+                        Thanks,
+                        The TDM Network team"
+                    MessageLanguage = "en-AU"
+                } `
+                -SendInvitationMessage:$true
+
+            Write-Host "✅ Invited $($User.Email)" -ForegroundColor Green
+        }
+        catch {
+            Write-Host "❌ Failed to invite $($User.Email): $_" -ForegroundColor Red
+        }
+    }
+}
+
 Class Student
 {
     [String]$Title
@@ -2499,4 +2529,4 @@ Class Student
 
 $Global:Rooms = "A103", "A104", "A105", "A106", "A114", "A116", "A118", "A133", "A135", "A137", "A143"
 
-Export-ModuleMember New-AdvDipStg2RBFEVMs, Reset-StudentUserPassword, New-ICMv8vApp, Add-E8ExamVM, New-E8vApp, New-ExchangeSession, Get-MacLearn, Set-MacLearn, New-MS203vApp, New-RBFEStg1vApp, New-RBFEStg2vApp, New-DipNetStage1FAVMs, New-VMwareICM67VM, Enable-RemoteDesktop, New-StudentUser, New-StudentAdmin, New-RDPFile, New-MSSQLVM, New-20740VM, New-20741VM, New-20742VM, New-20744VM, New-20745VM, New-DipNetStage2FAVMs, Get-StudentUser, Get-LockedStudent, New-vSICMvApp, Stop-LabComputers, Get-LoggedInUsers
+Export-ModuleMember Invite-TAFEUser, New-AdvDipStg2RBFEVMs, Reset-StudentUserPassword, New-ICMv8vApp, Add-E8ExamVM, New-E8vApp, New-ExchangeSession, Get-MacLearn, Set-MacLearn, New-MS203vApp, New-RBFEStg1vApp, New-RBFEStg2vApp, New-DipNetStage1FAVMs, New-VMwareICM67VM, Enable-RemoteDesktop, New-StudentUser, New-StudentAdmin, New-RDPFile, New-MSSQLVM, New-20740VM, New-20741VM, New-20742VM, New-20744VM, New-20745VM, New-DipNetStage2FAVMs, Get-StudentUser, Get-LockedStudent, New-vSICMvApp, Stop-LabComputers, Get-LoggedInUsers
