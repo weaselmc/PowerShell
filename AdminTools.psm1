@@ -183,7 +183,7 @@
                     if(($Group -eq 'AWD7') -or ($Group -eq 'AVX6') -or ($Group -eq 'AB51'))
                     {
                         #New-StudentAdmin -Firstname $Firstname -Lastname $Lastname -StudentId $StudentId -Group $Group -Username $Username
-                    #    $vms = Get-ClusterResource | ? {($_.OwnerGroup -like "HD*") -and ($_.State -eq "Offline")}
+                    #    $vms = Get-ClusterResource | Where-Object {($_.OwnerGroup -like "HD*") -and ($_.State -eq "Offline")}
                     #    $Server = $vms[0]
                     #    Start-ClusterResource $Server
                     #    start-sleep -Seconds 45
@@ -588,7 +588,7 @@ Function Add-StudentVMAccess{
         $Server = "$ServerPrefix*"}
 
     if([String]::IsNullOrEmpty($Server)){
-        $cr = Get-ClusterResource | ? {($_.OwnerGroup -like $Server) -and ($_.State -eq "Offline")}
+        $cr = Get-ClusterResource | Where-Object {($_.OwnerGroup -like $Server) -and ($_.State -eq "Offline")}
         $Server = $cr[0]
         $SAMUser =   "$($Domain.NetBIOSName)\$Username"
         Start-ClusterResource $Server
@@ -614,7 +614,7 @@ Function Get-NextVMNum{
     Param(
     [string]$ServerPrefix
     )
-    $vms = Get-ClusterResource | ? {($_.OwnerGroup -like "$ServerPrefix*")}
+    $vms = Get-ClusterResource | Where-Object {($_.OwnerGroup -like "$ServerPrefix*")}
     if([string]::IsNullOrEmpty($vms))
     {
         $i = 1
@@ -672,7 +672,7 @@ New-MSSQLVM -User Student
                 $vcadmin=whoami
                 $VCcred =[System.Management.Automation.PSCredential]::new($vcadmin, (Read-Host "Enter $vcAdmin password" -AsSecureString))             
                 }
-            if ((Get-Module VMware.PowerCLI) -eq $null){
+            if ($null -eq (Get-Module VMware.PowerCLI)){
                 Import-Module VMware.PowerCLI}
             if($Global:DefaultVIServers.Count -eq 0){
                 Connect-VIServer "vcenter.tdmadmin.local" -Credential $VCcred
@@ -691,7 +691,7 @@ New-MSSQLVM -User Student
                 Write-Host "Creating $Server" -ForegroundColor Yellow
                 New-VM -Template Base-Win2019_SQL -Name $Server -Datastore Prog_Datastore -Location Programming -OSCustomizationSpec WinServer2019TDMBase -ResourcePool Resources                    
                 Start-VM $Server
-                while ([string]::IsNullOrEmpty($vmIP)) {$vmIP = Get-VMGuest $Server | select -ExpandProperty IPAddress | ? {$_ -like "172.20.*"}}
+                while ([string]::IsNullOrEmpty($vmIP)) {$vmIP = Get-VMGuest $Server | Select-Object -ExpandProperty IPAddress | Where-Object {$_ -like "172.20.*"}}
                 Invoke-Command -ComputerName "$Server.tdm.local" -Credential $DomainCredential  -Args $Username {param($username) Add-LocalGroupMember -Group Administrators -Member $Username}
                 #create rdpfile
                 New-VIPermission -Entity $Server -Principal $Username -Role "VirtualMachineConsoleUser" -Propagate $true
@@ -737,7 +737,7 @@ New-20744VM -User Student
         Begin{
              #$secpasswd = ConvertTo-SecureString ???  -AsPlainText -Force             
              #$DomainCredential = New-Object System.Management.Automation.PSCredential ($AdminUser, (Read-Host "Enter $AdminUser password" -AsSecureString))
-             if ($VCcred -eq $null){
+             if ($null -eq $VCcred){
                 $vcadmin=whoami
                 $VCcred = [System.Management.Automation.PSCredential]::new($vcadmin, (Read-Host "Enter $vcadmin password" -AsSecureString))
              }
@@ -766,7 +766,7 @@ New-20744VM -User Student
                 New-VM -Template 20744C-LON-HOST1 -Name $Server -Datastore Net_Datastore -Location Networking -ResourcePool Resources                   
                 Start-VM $Server
                 $vmIP = $null
-                while ([string]::IsNullOrEmpty($vmIP)) {$vmIP = Get-VMGuest $Server | select -ExpandProperty IPAddress | ? {$_ -like "172.20.*"}}
+                while ([string]::IsNullOrEmpty($vmIP)) {$vmIP = Get-VMGuest $Server | select -ExpandProperty IPAddress | Where-Object {$_ -like "172.20.*"}}
                 #create rdpfile
                 New-VIPermission -Entity $Server -Principal $Username -Role "VirtualMachineConsoleUser" -Propagate $true
                 Write-Host "Creating $RDPFilePath\$Group\$User\$Server.rdp" -ForegroundColor Yellow 
@@ -810,7 +810,7 @@ New-20744VM -User Student
         Begin{
              #$secpasswd = ConvertTo-SecureString ???  -AsPlainText -Force             
              #$DomainCredential = New-Object System.Management.Automation.PSCredential ($AdminUser, (Read-Host "Enter $AdminUser password" -AsSecureString))
-             if ($VCcred -eq $null){
+             if ($null -eq $VCcred){
                 $vcadmin=whoami
                 $VCcred = [System.Management.Automation.PSCredential]::new($vcadmin, (Read-Host "Enter $vcadmin password" -AsSecureString))
              }
@@ -819,7 +819,7 @@ New-20744VM -User Student
         process{
            
 
-            if ((Get-Module VMware.PowerCLI) -eq $null){
+            if ($null -eq (Get-Module VMware.PowerCLI)){
                 Import-Module VMware.PowerCLI
             }
 
@@ -844,7 +844,7 @@ New-20744VM -User Student
                 }
                 Start-VM $Server
                 $vmIP = $null
-                while ([string]::IsNullOrEmpty($vmIP)) {$vmIP = Get-VMGuest $Server | select -ExpandProperty IPAddress | ? {$_ -like "172.20.*"}}
+                while ([string]::IsNullOrEmpty($vmIP)) {$vmIP = Get-VMGuest $Server | select -ExpandProperty IPAddress | Where-Object {$_ -like "172.20.*"}}
                 #create rdpfile
                 New-VIPermission -Entity $Server -Principal $Username -Role "VirtualMachineConsoleUser" -Propagate $true
                 Write-Host "Creating $RDPFilePath\$Group\$User\$Server.rdp" -ForegroundColor Yellow 
@@ -888,7 +888,7 @@ New-20744VM -User Student
         Begin{
              #$secpasswd = ConvertTo-SecureString ???  -AsPlainText -Force             
              #$DomainCredential = New-Object System.Management.Automation.PSCredential ($AdminUser, (Read-Host "Enter $AdminUser password" -AsSecureString))
-             if ($VCcred -eq $null){
+             if ($null -eq $VCcred){
                 $vcadmin=whoami
                 $VCcred = [System.Management.Automation.PSCredential]::new($vcadmin, (Read-Host "Enter $vcadmin password" -AsSecureString))
              }
@@ -897,7 +897,7 @@ New-20744VM -User Student
         process{
            
 
-            if ((Get-Module VMware.PowerCLI) -eq $null){
+            if ($null -eq (Get-Module VMware.PowerCLI)){
                 Import-Module VMware.PowerCLI
             }
 
@@ -923,7 +923,7 @@ New-20744VM -User Student
                 New-VIPermission -Entity $Server -Principal $Username -Role "VirtualMachineConsoleUser" -Propagate $true
                 Start-VM $Server
                 $vmIP = $null
-                while ([string]::IsNullOrEmpty($vmIP)) {$vmIP = Get-VMGuest $Server | select -ExpandProperty IPAddress | ? {$_ -like "172.20.*"}}
+                while ([string]::IsNullOrEmpty($vmIP)) {$vmIP = Get-VMGuest $Server | Select-Object  -ExpandProperty IPAddress | Where-Object {$_ -like "172.20.*"}}
                 #create rdpfile                
                 Write-Host "Creating $RDPFilePath\$Group\$User\$Server.rdp" -ForegroundColor Yellow 
                 New-RDPFile -Server $Server -Path "$RDPFilePath\$Group\$User" -IP $vmIP                    
@@ -966,7 +966,7 @@ Function New-20740VM{
             Begin{
                  #$secpasswd = ConvertTo-SecureString ???  -AsPlainText -Force             
                  #$DomainCredential = New-Object System.Management.Automation.PSCredential ($AdminUser, (Read-Host "Enter $AdminUser password" -AsSecureString))
-                 if ($VCcred -eq $null){
+                 if ($null -eq $VCcred){
                     $vcadmin=whoami
                     $VCcred = [System.Management.Automation.PSCredential]::new($vcadmin, (Read-Host "Enter $vcadmin password" -AsSecureString))
                  }
@@ -1001,7 +1001,7 @@ Function New-20740VM{
                     New-VIPermission -Entity $Server -Principal $Username -Role "VirtualMachineConsoleUser" -Propagate $true
                     Start-VM $Server
                     $vmIP = $null
-                    while ([string]::IsNullOrEmpty($vmIP)) {$vmIP = Get-VMGuest $Server | select -ExpandProperty IPAddress | ? {$_ -like "172.20.*"}}
+                    while ([string]::IsNullOrEmpty($vmIP)) {$vmIP = Get-VMGuest $Server | select -ExpandProperty IPAddress | Where-Object {$_ -like "172.20.*"}}
                     #create rdpfile                
                     Write-Host "Creating $RDPFilePath\$Group\$User\$Server.rdp" -ForegroundColor Yellow 
                     New-RDPFile -Server $Server -Path "$RDPFilePath\$Group\$User" -IP $vmIP                    
@@ -1044,7 +1044,7 @@ Function New-20740VM{
                 Begin{
                      #$secpasswd = ConvertTo-SecureString ???  -AsPlainText -Force             
                      #$DomainCredential = New-Object System.Management.Automation.PSCredential ($AdminUser, (Read-Host "Enter $AdminUser password" -AsSecureString))
-                     if ($VCcred -eq $null){
+                     if ($null -eq $VCcred){
                         $vcadmin=whoami
                         $VCcred = [System.Management.Automation.PSCredential]::new($vcadmin, (Read-Host "Enter $vcadmin password" -AsSecureString))
                      }
@@ -1053,7 +1053,7 @@ Function New-20740VM{
                 process{
                    
         
-                    if ((Get-Module VMware.PowerCLI) -eq $null){
+                    if ($null -eq (Get-Module VMware.PowerCLI)){
                         Import-Module VMware.PowerCLI
                     }
         
@@ -1079,7 +1079,7 @@ Function New-20740VM{
                         New-VIPermission -Entity $Server -Principal $Username -Role "VirtualMachineConsoleUser" -Propagate $true
                         Start-VM $Server
                         $vmIP = $null
-                        while ([string]::IsNullOrEmpty($vmIP)) {$vmIP = Get-VMGuest $Server | select -ExpandProperty IPAddress | ? {$_ -like "172.20.*"}}
+                        while ([string]::IsNullOrEmpty($vmIP)) {$vmIP = Get-VMGuest $Server | Select-Object -ExpandProperty IPAddress | Where-Object {$_ -like "172.20.*"}}
                         #create rdpfile                
                         Write-Host "Creating $RDPFilePath\$Group\$User\$Server.rdp" -ForegroundColor Yellow 
                         New-RDPFile -Server $Server -Path "$RDPFilePath\$Group\$User" -IP $vmIP                    
@@ -1125,7 +1125,7 @@ New-DipS2AssVMs -User Student -VLan 71
         Begin{
              #$secpasswd = ConvertTo-SecureString ???  -AsPlainText -Force             
              #$DomainCredential = New-Object System.Management.Automation.PSCredential ($AdminUser, (Read-Host "Enter $AdminUser password" -AsSecureString))
-             if ($VCcred -eq $null){
+             if ($null -eq $VCcred){
                 $vcadmin=whoami
                 $VCcred = [System.Management.Automation.PSCredential]::new($vcadmin, (Read-Host "Enter $vcadmin password" -AsSecureString))
              }
@@ -1135,7 +1135,7 @@ New-DipS2AssVMs -User Student -VLan 71
         process{
            
 
-            if ((Get-Module VMware.PowerCLI) -eq $null){
+            if ($null -eq (Get-Module VMware.PowerCLI)){
                 Import-Module VMware.PowerCLI
             }
 
@@ -1212,7 +1212,7 @@ New-DipS2AssVMs -User Student -VLan 71
                     Start-VM "$ServerName"
                     if($Server -ne "RBFE-DD-WRT"){
                         $vmIP = $null
-                        while ([string]::IsNullOrEmpty($vmIP)) {$vmIP = Get-VMGuest $ServerName | select -ExpandProperty IPAddress | ? {$_ -like "172.20.*"}}
+                        while ([string]::IsNullOrEmpty($vmIP)) {$vmIP = Get-VMGuest $ServerName | Select-Object -ExpandProperty IPAddress | Where-Object {$_ -like "172.20.*"}}
                         #create rdpfile
                         Invoke-Command -ComputerName $_ -Credential $LocalAdmin -ScriptBlock {
                             Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server'-name "fDenyTSConnections" -Value 0
@@ -1705,7 +1705,7 @@ New-DipS2AssVMs -User Student -VLan 71
         Begin{
              #$secpasswd = ConvertTo-SecureString ???  -AsPlainText -Force             
              #$DomainCredential = New-Object System.Management.Automation.PSCredential ($AdminUser, (Read-Host "Enter $AdminUser password" -AsSecureString))
-             if ($VCcred -eq $null){
+             if ($null -eq $VCcred){
                 #$vcadmin = whomai
                 $VCcred = Get-Credential #[System.Management.Automation.PSCredential]::new($vcadmin, (Read-Host "Enter $vcadmin password" -AsSecureString))
                 #$vcadmin = $VCcred.UserName
@@ -1715,7 +1715,7 @@ New-DipS2AssVMs -User Student -VLan 71
         process{
            
 
-            if ((Get-Module VMware.PowerCLI) -eq $null){
+            if ($null -eq (Get-Module VMware.PowerCLI)){
                 Import-Module VMware.PowerCLI
             }
 
@@ -1832,7 +1832,7 @@ New-DipS2AssVMs -User Student -VLan 71
                     # if($HyperV){
                     #     if($Server -ne "RBFE-DD-WRT"){
                     #         $vmIP = $null
-                    #         while ([string]::IsNullOrEmpty($vmIP)) {$vmIP = Get-VMGuest $ServerName | select -ExpandProperty IPAddress | ? {$_ -like "172.20.*"}}
+                    #         while ([string]::IsNullOrEmpty($vmIP)) {$vmIP = Get-VMGuest $ServerName | select -ExpandProperty IPAddress | Where-Object {$_ -like "172.20.*"}}
                     #         #create rdpfile
                     #         Invoke-Command -ComputerName $vmIP -Credential $LocalAdmin -ScriptBlock {
                     #             Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server'-name "fDenyTSConnections" -Value 0
@@ -1846,7 +1846,7 @@ New-DipS2AssVMs -User Student -VLan 71
                     #else {
                         #if($Server -eq "RBFE-SS"){
                         #    $vmIP = $null
-                        #    while ([string]::IsNullOrEmpty($vmIP)) {$vmIP = Get-VMGuest $ServerName | select -ExpandProperty IPAddress | ? {$_ -like "172.20.*"}}
+                        #    while ([string]::IsNullOrEmpty($vmIP)) {$vmIP = Get-VMGuest $ServerName | select -ExpandProperty IPAddress | Where-Object {$_ -like "172.20.*"}}
                         #    Invoke-Command -ComputerName $vmIP -Credential $LocalAdmin -ScriptBlock {
                         #        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server'-name "fDenyTSConnections" -Value 0
                         #        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 0
@@ -1922,10 +1922,10 @@ Function Get-StudentUser
         $sb = "OU=Students,DC=TDM,DC=LOCAL"
     }
     if([string]::IsNullOrEmpty($AccountName)){
-        Get-ADUser -Filter * -SearchBase $sb -Properties Description,lastlogondate,passwordlastset, EmailAddress | ? { $_.Description -like "$StudentId*$FirstName*$LastName*" }  #-or $_.Description -Contains  -or $_.Description -Contains }
+        Get-ADUser -Filter * -SearchBase $sb -Properties Description,lastlogondate,passwordlastset, EmailAddress | Where-Object { $_.Description -like "$StudentId*$FirstName*$LastName*" }  #-or $_.Description -Contains  -or $_.Description -Contains }
     }
     else {
-        Get-ADUser $AccountName -Properties description,lastlogondate,passwordlastset, EmailAddress | ? { $_.Description -like "$StudentId*$FirstName*$LastName*"  } # -or $_.Description -Contains $FirstName -or $_.Description -Contains $LastName}        
+        Get-ADUser $AccountName -Properties description,lastlogondate,passwordlastset, EmailAddress | Where-Object { $_.Description -like "$StudentId*$FirstName*$LastName*"  } # -or $_.Description -Contains $FirstName -or $_.Description -Contains $LastName}        
     }
 }
 
@@ -1952,7 +1952,7 @@ Function Get-LockedStudent{
     {
         $sb = "OU=Students,DC=TDM,DC=LOCAL"
     }
-    Get-ADUser -Filter * -SearchBase $sb -Properties Description,lastlogondate,passwordlastset | ? { $_.LockedOut -eq $true}
+    Get-ADUser -Filter * -SearchBase $sb -Properties Description,lastlogondate,passwordlastset | Where-Object { $_.LockedOut -eq $true}
 }
 Function Enable-LocalRemoteDesktop {
     Param(
@@ -2015,7 +2015,7 @@ New-20744VM -User Student
         Begin{
              #$secpasswd = ConvertTo-SecureString ???  -AsPlainText -Force             
              #$DomainCredential = New-Object System.Management.Automation.PSCredential ($AdminUser, (Read-Host "Enter $AdminUser password" -AsSecureString))
-             if ($VCcred -eq $null){
+             if ($null -eq $VCcred){
                 $vcadmin = whoami
                 $VCcred = [System.Management.Automation.PSCredential]::new($vcadmin, (Read-Host "Enter $vcadmin password" -AsSecureString))
              }
@@ -2024,7 +2024,7 @@ New-20744VM -User Student
         process{
            
 
-            if ((Get-Module VMware.PowerCLI) -eq $null){
+            if ($null -eq (Get-Module VMware.PowerCLI)){
                 Import-Module VMware.PowerCLI
             }
 
@@ -2053,7 +2053,7 @@ New-20744VM -User Student
                 New-VIPermission -Entity $Server -Principal $Username -Role "VirtualMachineConsoleUser" -Propagate $true
                 Start-VM $Server
                 $vmIP = $null
-                while ([string]::IsNullOrEmpty($vmIP)) {$vmIP = Get-VMGuest $Server | select -ExpandProperty IPAddress | ? {$_ -like "172.20.*"}}
+                while ([string]::IsNullOrEmpty($vmIP)) {$vmIP = Get-VMGuest $Server | select -ExpandProperty IPAddress | Where-Object {$_ -like "172.20.*"}}
                 #create urlfile                
                 Write-Host "Creating $RDPFilePath\$Group\$User\$Server.url" -ForegroundColor Yellow                 
                 New-UrlShortcut -Server $Server -Path "$FilePath\$Group\$User" -IP $vmIP                    
@@ -2179,7 +2179,7 @@ Function Set-MacLearn {
         $dvpg = Get-VDPortgroup -Name $dvpgname -ErrorAction SilentlyContinue
         $switchVersion = ($dvpg | Get-VDSwitch).Version
         if($dvpg -and [version]$switchVersion -ge [version]$minSwitchVersion) {
-            $originalSecurityPolicy = $dvpg.ExtensionData.Config.DefaultPortConfig.SecurityPolicy
+            #$originalSecurityPolicy = $dvpg.ExtensionData.Config.DefaultPortConfig.SecurityPolicy
 
             $spec = New-Object VMware.Vim.DVPortgroupConfigSpec
             $dvPortSetting = New-Object VMware.Vim.VMwareDVSPortSetting
@@ -2284,7 +2284,7 @@ New-vSICMvApp -User Student -VLan 71 -VCCred $cred
         New-VApp -VApp E8-VMs -Name $vAppName -Datastore $Datastore -Location (Get-Cluster) -InventoryLocation $InvLoc -DiskStorageFormat Thin
             
         if([string]::isnullorEmpty($VLan) -or $vlan -eq 0){
-            $Vlan = 1 + (Get-vm | Get-NetworkAdapter |sort -Property NetworkName |select NetworkName -Unique -ExpandProperty NetworkName -Last 1).substring(4,3)                    
+            $Vlan = 1 + (Get-vm | Get-NetworkAdapter |Sort-Object -Property NetworkName |Select-Object NetworkName -Unique -ExpandProperty NetworkName -Last 1).substring(4,3)                    
         }
         $vdpname = "Vlan$($VLan)DPortGroup"        
         New-VIPermission -Entity $vAppName -Principal $Username -Role "VirtualMachinePowerUser" -Propagate $true
@@ -2341,9 +2341,9 @@ New-vSICMvApp -User Student -VLan 71 -VCCred $cred
             Connect-VIServer "vcenter.tdmadmin.local" -Credential $VCcred
         }
             
-        $Username = "TDM.LOCAL\$User"
-        $SSOUsername = "TDMADMIN.VSLOCAL\$User"
-        $InvLoc = "E8"
+        #$Username = "TDM.LOCAL\$User"
+        #$SSOUsername = "TDMADMIN.VSLOCAL\$User"
+        #$InvLoc = "E8"
         $Datastore = "Net_Datastore"
         $vAppName = "$User-E8-VMs"
             
@@ -2495,7 +2495,7 @@ param(
         try {
             $Invitation = New-MgInvitation `
                 -InvitedUserEmailAddress $User `
-                -InviteRedirectUrl "https://portal.azure.com" `                
+                -InviteRedirectUrl "https://portal.azure.com" `
                 -InvitedUserMessageInfo @{
                     CustomizedMessageBody = 
                     "Hi,
