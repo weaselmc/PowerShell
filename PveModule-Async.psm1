@@ -440,10 +440,10 @@ function New-MS203VMs {
     )
 
     $jobs = @()
-    $jobs += New-PveVmFromTemplate -PveHost pvec.tdm.local -UserName $UserName -VlanTag $VlanTag -Storage data -TemplateId 103 -Credential $Credential -SkipCertificateCheck -Completion $Completion
-    $jobs += New-PveVmFromTemplate -PveHost pvec.tdm.local -UserName $UserName -VlanTag $VlanTag -Storage data -TemplateId 104 -Credential $Credential -SkipCertificateCheck -Completion $Completion
-    $jobs += New-PveVmFromTemplate -PveHost pvec.tdm.local -UserName $UserName -VlanTag $VlanTag -NicCount 3 -Storage data -TemplateId 102 -Credential $Credential -SkipCertificateCheck -Completion $Completion
-    $jobs += New-PveVmFromTemplate -PveHost pvec.tdm.local -UserName $UserName -VlanTag $VlanTag -NicCount 3 -Storage data -TemplateId 101 -Credential $Credential -SkipCertificateCheck -Completion $Completion
+    $jobs += New-PveVmFromTemplate -PveHost pvec.tdm.local -UserName $UserName -VlanTag $VlanTag  -TemplateId 103 -Credential $Credential -SkipCertificateCheck -Completion $Completion
+    $jobs += New-PveVmFromTemplate -PveHost pvec.tdm.local -UserName $UserName -VlanTag $VlanTag  -TemplateId 104 -Credential $Credential -SkipCertificateCheck -Completion $Completion
+    $jobs += New-PveVmFromTemplate -PveHost pvec.tdm.local -UserName $UserName -VlanTag $VlanTag -NicCount 3 -TemplateId 102 -Credential $Credential -SkipCertificateCheck -Completion $Completion
+    $jobs += New-PveVmFromTemplate -PveHost pvec.tdm.local -UserName $UserName -VlanTag $VlanTag -NicCount 3 -TemplateId 101 -Credential $Credential -SkipCertificateCheck -Completion $Completion
 
     
     # Wait once until ALL complete
@@ -474,11 +474,11 @@ function New-RBFEStg2VMs {
     )
 
     $jobs = @()
-    $jobs += New-PveVmFromTemplate -PveHost pvec.tdm.local -UserName $UserName -VlanTag $VlanTag -Storage data -TemplateId 103 -Credential $Credential -SkipCertificateCheck -Completion $Completion
-    $jobs += New-PveVmFromTemplate -PveHost pvec.tdm.local -UserName $UserName -VlanTag $VlanTag -Storage data -TemplateId 104 -Credential $Credential -SkipCertificateCheck -Completion $Completion
-    $jobs += New-PveVmFromTemplate -PveHost pvec.tdm.local -UserName $UserName -VlanTag $VlanTag -Storage data -TemplateId 126 -Credential $Credential -SkipCertificateCheck -Completion $Completion
-    $jobs += New-PveVmFromTemplate -PveHost pvec.tdm.local -UserName $UserName -VlanTag $VlanTag -NicCount 3 -Storage data -TemplateId 102 -Credential $Credential -SkipCertificateCheck -Completion $Completion
-    $jobs += New-PveVmFromTemplate -PveHost pvec.tdm.local -UserName $UserName -VlanTag $VlanTag -NicCount 3 -Storage data -TemplateId 101 -Credential $Credential -SkipCertificateCheck -Completion $Completion
+    $jobs += New-PveVmFromTemplate -PveHost pvec.tdm.local -UserName $UserName -VlanTag $VlanTag -TemplateId 103 -Credential $Credential -SkipCertificateCheck -Completion $Completion
+    $jobs += New-PveVmFromTemplate -PveHost pvec.tdm.local -UserName $UserName -VlanTag $VlanTag -TemplateId 104 -Credential $Credential -SkipCertificateCheck -Completion $Completion
+    $jobs += New-PveVmFromTemplate -PveHost pvec.tdm.local -UserName $UserName -VlanTag $VlanTag -TemplateId 126 -Credential $Credential -SkipCertificateCheck -Completion $Completion
+    $jobs += New-PveVmFromTemplate -PveHost pvec.tdm.local -UserName $UserName -VlanTag $VlanTag -NicCount 3 -TemplateId 102 -Credential $Credential -SkipCertificateCheck -Completion $Completion
+    $jobs += New-PveVmFromTemplate -PveHost pvec.tdm.local -UserName $UserName -VlanTag $VlanTag -NicCount 3 -TemplateId 101 -Credential $Credential -SkipCertificateCheck -Completion $Completion
     
     
     # Wait once until ALL complete
