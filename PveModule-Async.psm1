@@ -495,5 +495,40 @@ function New-RBFEStg2VMs {
 
 }
 
-Export-ModuleMember -Function New-MS203VMs, New-PveVmFromTemplate, Wait-PveTas, New-RBFEStg2VMs
+function New-RBFEStg1VMs {
+    [CmdletBinding(DefaultParameterSetName='ByName')]
+    param(
+        [Parameter(Mandatory)][ValidatePattern('^[\w\.-]+$')][string]$UserName,
+        [Parameter(Mandatory)][ValidateRange(1,4094)][int]$VlanTag,
+        [Parameter(Mandatory)][pscredential]$Credential,
+        
+        # Use ThreadJob by default so clones run concurrently in PS7+
+        [ValidateSet('ThreadJob','Job')]
+        [string]$Completion = 'ThreadJob'
+
+    )
+
+    $jobs = @()
+    $jobs += New-PveVmFromTemplate -PveHost pvec.tdm.local -UserName $UserName -VlanTag $VlanTag -TemplateId 203 -Credential $Credential -SkipCertificateCheck -Completion $Completion
+    $jobs += New-PveVmFromTemplate -PveHost pvec.tdm.local -UserName $UserName -VlanTag $VlanTag -TemplateId 204 -Credential $Credential -SkipCertificateCheck -Completion $Completion
+    $jobs += New-PveVmFromTemplate -PveHost pvec.tdm.local -UserName $UserName -VlanTag $VlanTag -NicCount 3 -TemplateId 205 -Credential $Credential -SkipCertificateCheck -Completion $Completion
+    $jobs += New-PveVmFromTemplate -PveHost pvec.tdm.local -UserName $UserName -VlanTag $VlanTag -NicCount 3 -TemplateId 206 -Credential $Credential -SkipCertificateCheck -Completion $Completion
+    $jobs += New-PveVmFromTemplate -PveHost pvec.tdm.local -UserName $UserName -VlanTag $VlanTag -NicCount 3 -TemplateId 207 -Credential $Credential -SkipCertificateCheck -Completion $Completion
+    
+    
+    # Wait once until ALL complete
+    Wait-Job $jobs
+
+    # Collect results and remove jobs
+    $results = $jobs | Receive-Job -AutoRemoveJob -Wait
+
+    # Optional: summarize
+    $summary = $results | Select-Object Name, VMID, Node, Result, ACLUser
+    $summary | Format-Table -AutoSize
+
+    return $results
+
+}
+
+Export-ModuleMember -Function New-MS203VMs, New-PveVmFromTemplate, Wait-PveTas, New-RBFEStg2VMs, New-RBFEStg1VMs
 
