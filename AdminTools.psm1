@@ -2524,15 +2524,19 @@ Function New-TAFEUserInvitation{
 function New-RBFEDipStg2Deployment {
     param (
         [string]$ComputerName="bilbo",
-        
+
         [Parameter(Mandatory=$true)]
         [string]$Prefix,
 
         [Parameter(Mandatory=$true)]
-        [int]$BaseVlan
+        [int]$BaseVlan,
+
+        [Parameter(Mandatory=$true)]
+        [PSCredential]$Cred
+
     )
 
-    Invoke-Command -ComputerName $ComputerName -ScriptBlock {
+    Invoke-Command -ComputerName $ComputerName -Authentication CredSSP -Credential $Cred -ScriptBlock {
         param ($Prefix, $BaseVlan)
 
         function New-RBFEDeployment {
