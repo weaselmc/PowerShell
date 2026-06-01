@@ -2521,6 +2521,190 @@ Function New-TAFEUserInvitation{
     }
 }
 
+function New-RBFEDipStg2Deployment {
+
+    param (
+        [Parameter(Mandatory=$true)]
+        [string]$Prefix,
+
+        [Parameter(Mandatory=$true)]
+        [int]$BaseVlan
+    )
+
+    $basePath = "C:\ClusterStorage\Volume1\VMs"
+    $parentPathRoot = "C:\ClusterStorage\Volume1\VHDs\2016-RBFE-Dip-Stg2"
+
+    # VLAN transformation
+    function Get-NewVlan {
+        param ($vlan)
+
+        switch ($vlan) {
+            60 { return $BaseVlan }
+            61 { return ($BaseVlan + 1) }
+            62 { return ($BaseVlan + 2) }
+            default { return $vlan }
+        }
+    }
+
+    # VM definitions with memory ranges
+    $vms = @{
+        "RBFE-N1" = @{
+            Generation = 2
+            MemoryStartupMB = 16384
+            MemoryMinMB = 4096
+            MemoryMaxMB = 24576
+            CPU = 8
+            NestedVirt = $true
+            Disks = @("rbfe-n1.vhdx","rbfe-n1-1.vhdx","rbfe-n1-2.vhdx","rbfe-n1-3.vhdx","rbfe-n1-4.vhdx")
+            VLANs = @(60,61,62,55)
+            Switch = "TDM vSwitch"
+        }
+
+        "RBFE-N2" = @{
+            Generation = 2
+            MemoryStartupMB = 16384
+            MemoryMinMB = 4096
+            MemoryMaxMB = 24576
+            CPU = 8
+            NestedVirt = $true
+            Disks = @("rbfe-n2.vhdx","rbfe-n2-1.vhdx","rbfe-n2-2.vhdx","rbfe-n2-3.vhdx","rbfe-n2-4.vhdx")
+            VLANs = @(60,61,62,55)
+            Switch = "TDM vSwitch"
+        }
+
+        "RBFE-OpenWRT" = @{
+            Generation = 1
+            MemoryStartupMB = 1024
+            MemoryMinMB = 512
+            MemoryMaxMB = 2048
+            CPU = 1
+            NestedVirt = $false
+            Disks = @("rbfe-openwrt.vhdx")
+            VLANs = @(60,55)
+            Switch = "TDM vSwitch"
+        }
+
+        "RBFE-Server" = @{
+            Generation = 2
+            MemoryStartupMB = 24576
+            MemoryMinMB = 8192
+            MemoryMaxMB = 24576
+            CPU = 16
+            NestedVirt = $true
+            Disks = @("RBFE-Server.vhdx","RBFE-Server-Data.vhdx")
+            VLANs = @(60)
+            Switch = "TDM vSwitch"
+        }
+
+        "RBFE-W11" = @{
+            Generation = 2
+            MemoryStartupMB = 4096
+            MemoryMinMB = 2048
+            MemoryMaxMB = 8192
+            CPU = 8
+            NestedVirt = $false
+            Disks = @("rbfe-w11.vhdx")
+            VLANs = @(60,10)
+            Switch = "TDM vSwitch"
+        }
+    }
+
+    foreach ($vmName in $vms.Keys) {
+
+        $config = $vms[$vmName]
+        $newName = "$Prefix-$vmName"
+        $vmPath = "$basePath\$newName"
+
+        Write-Host "Creating VM: $newName" -ForegroundColor Cyan
+
+        New-Item -ItemType Directory -Path $vmPath -Force | Out-Null
+
+        # Create VM
+        New-VM -Name $newName `
+            -MemoryStartupBytes ($config.MemoryStartupMB * 1MB) `
+            -Generation $config.Generation `
+            -Path $vmPath | Out-Null
+
+        # Enable Dynamic Memory
+        Set-VMMemory -VMName $newName `
+            -DynamicMemoryEnabled $true `
+            -MinimumBytes ($config.MemoryMinMB * 1MB) `
+            -MaximumBytes ($config.MemoryMaxMB * 1MB)
+
+        # CPU
+        Set-VMProcessor -VMName $newName -Count $config.CPU
+
+        # Nested virtualization
+        if ($config.NestedVirt) {
+            Set-VMProcessor -VMName $newName -ExposeVirtualizationExtensions $true
+        }
+
+        # Remove default disk
+        Get-VMHardDiskDrive -VMName $newName -ErrorAction SilentlyContinue | Remove-VMHardDiskDrive
+
+        # Disks
+        $ctrl = 0
+        foreach ($disk in $config.Disks) {
+
+            $parentDisk = Join-Path $parentPathRoot $disk
+            $newDisk = Join-Path $vmPath $disk
+
+            if (!(Test-Path $parentDisk)) {
+                Write-Warning "Missing parent disk: $parentDisk"
+                continue
+            }
+
+            New-VHD -Path $newDisk -ParentPath $parentDisk -Differencing | Out-Null
+
+            Add-VMHardDiskDrive `
+                -VMName $newName `
+                -Path $newDisk `
+                -ControllerType SCSI `
+                -ControllerNumber 0 `
+                -ControllerLocation $ctrl
+
+            $ctrl++
+        }
+
+        # Remove default NIC
+        Get-VMNetworkAdapter -VMName $newName | Remove-VMNetworkAdapter
+
+        # Add NICs
+        $nicIndex = 0
+        foreach ($vlan in $config.VLANs) {
+
+            $nicName = "NIC-$nicIndex"
+
+            Add-VMNetworkAdapter `
+                -VMName $newName `
+                -Name $nicName `
+                -SwitchName $config.Switch
+
+            $newVlan = Get-NewVlan $vlan
+
+            Set-VMNetworkAdapterVlan `
+                -VMName $newName `
+                -VMNetworkAdapterName $nicName `
+                -Access `
+                -VlanId $newVlan
+
+            # Enable MAC spoofing ONLY on base VLAN NIC
+            if ($vlan -eq 60) {
+                Set-VMNetworkAdapter `
+                    -VMName $newName `
+                    -VMNetworkAdapterName $nicName `
+                    -MacAddressSpoofing On
+            }
+
+            $nicIndex++
+        }
+
+        Write-Host "$newName created successfully" -ForegroundColor Green
+    }
+
+    Write-Host "$Prefix on $BaseVlan Deployment complete." -ForegroundColor Yellow
+}
+
 Class Student
 {
     [String]$Title
@@ -2534,4 +2718,4 @@ Class Student
 
 $Global:Rooms = "A103", "A104", "A105", "A106", "A114", "A116", "A118", "A133", "A135", "A137", "A143"
 
-Export-ModuleMember Invite-TAFEUser, New-AdvDipStg2RBFEVMs, Reset-StudentUserPassword, New-ICMv8vApp, Add-E8ExamVM, New-E8vApp, New-ExchangeSession, Get-MacLearn, Set-MacLearn, New-MS203vApp, New-RBFEStg1vApp, New-RBFEStg2vApp, New-DipNetStage1FAVMs, New-VMwareICM67VM, Enable-RemoteDesktop, New-StudentUser, New-StudentAdmin, New-RDPFile, New-MSSQLVM, New-20740VM, New-20741VM, New-20742VM, New-20744VM, New-20745VM, New-DipNetStage2FAVMs, Get-StudentUser, Get-LockedStudent, New-vSICMvApp, Stop-LabComputers, Get-LoggedInUsers
+Export-ModuleMember  New-RBFEDipStg2Deployment, Invite-TAFEUser, New-AdvDipStg2RBFEVMs, Reset-StudentUserPassword, New-ICMv8vApp, Add-E8ExamVM, New-E8vApp, New-ExchangeSession, Get-MacLearn, Set-MacLearn, New-MS203vApp, New-RBFEStg1vApp, New-RBFEStg2vApp, New-DipNetStage1FAVMs, New-VMwareICM67VM, Enable-RemoteDesktop, New-StudentUser, New-StudentAdmin, New-RDPFile, New-MSSQLVM, New-20740VM, New-20741VM, New-20742VM, New-20744VM, New-20745VM, New-DipNetStage2FAVMs, Get-StudentUser, Get-LockedStudent, New-vSICMvApp, Stop-LabComputers, Get-LoggedInUsers
