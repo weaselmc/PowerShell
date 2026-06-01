@@ -2550,7 +2550,7 @@ function New-RBFEDipStg2Deployment {
             )
 
             $basePath = "C:\ClusterStorage\Volume1\VMs"
-            $parentPathRoot = "C:\ClusterStorage\Volume1\VHDs\2016-RBFE-Dip-Stg2"
+            $parentPathRoot = "C:\ClusterStorage\Volume1\VHDs\2016-RBFE-Dip-Stg2"            
 
             # VLAN transformation
             function Get-NewVlan {
@@ -2562,7 +2562,7 @@ function New-RBFEDipStg2Deployment {
                     62 { return ($BaseVlan + 2) }
                     default { return $vlan }
                 }
-            }
+            }            
 
             # VM definitions with memory ranges
             $vms = @{
@@ -2575,7 +2575,7 @@ function New-RBFEDipStg2Deployment {
                     NestedVirt = $true
                     Disks = @("rbfe-n1.vhdx","rbfe-n1-1.vhdx","rbfe-n1-2.vhdx","rbfe-n1-3.vhdx","rbfe-n1-4.vhdx")
                     VLANs = @(60,61,62,55)
-                    Switch = "TDM vSwitch"
+                    Switch = "TDM Logical Network"
                 }
 
                 "RBFE-N2" = @{
@@ -2587,7 +2587,7 @@ function New-RBFEDipStg2Deployment {
                     NestedVirt = $true
                     Disks = @("rbfe-n2.vhdx","rbfe-n2-1.vhdx","rbfe-n2-2.vhdx","rbfe-n2-3.vhdx","rbfe-n2-4.vhdx")
                     VLANs = @(60,61,62,55)
-                    Switch = "TDM vSwitch"
+                    Switch = "TDM Logical Network"
                 }
 
                 "RBFE-OpenWRT" = @{
@@ -2599,7 +2599,7 @@ function New-RBFEDipStg2Deployment {
                     NestedVirt = $false
                     Disks = @("rbfe-openwrt.vhdx")
                     VLANs = @(60,55)
-                    Switch = "TDM vSwitch"
+                    Switch = "TDM Logical Network"
                 }
 
                 "RBFE-Server" = @{
@@ -2611,7 +2611,7 @@ function New-RBFEDipStg2Deployment {
                     NestedVirt = $true
                     Disks = @("RBFE-Server.vhdx","RBFE-Server-Data.vhdx")
                     VLANs = @(60)
-                    Switch = "TDM vSwitch"
+                    Switch = "TDM Logical Network"
                 }
 
                 "RBFE-W11" = @{
@@ -2623,7 +2623,7 @@ function New-RBFEDipStg2Deployment {
                     NestedVirt = $false
                     Disks = @("rbfe-w11.vhdx")
                     VLANs = @(60,10)
-                    Switch = "TDM vSwitch"
+                    Switch = "TDM Logical Network"
                 }
             }
 
@@ -2716,12 +2716,34 @@ function New-RBFEDipStg2Deployment {
 
                     $nicIndex++
                 }
-
                 Write-Host "$newName created successfully" -ForegroundColor Green
+                
+                #set cloud and user access
+                Invoke-Command -ComputerName haldir -ArgumentList $Prefix, $newName -ScriptBlock {
+                    param( 
+                        [string]$Prefix,
+                        [string]$VmName
+                    )
+                    
+                    
+                    Import-Module VirtualMachineManager
+                               
+                    $vm = Get-SCVirtualMachine -Name $VmName
+                    $cloud = Get-SCCloud -Name "TDM Private Cloud" 
+                    
+                    if (-not $vm) {
+                        Write-Error "VM $VmName not found"
+                        return
+                    }
+
+                    Set-SCVirtualMachine -VM $vm -Cloud $cloud -Owner "TDM\$Prefix"                    
+                }
+
             }
 
             Write-Host "$Prefix on $BaseVlan Deployment complete." -ForegroundColor Yellow
         }
+
         Import-Module Hyper-V
         Import-Module FailoverClusters
 
