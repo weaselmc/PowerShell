@@ -535,76 +535,97 @@ function Remove-RBFEStg2VMs {
         [Parameter(Mandatory)]
         [string[]]$Usernames,
 
-        [Parameter(Mandatory)]
-        $PveClient,
-
         [int]$ShutdownWaitSeconds = 10,
-        [switch]$Force
+        [switch]$Force,
+        [switch]$WhatIf
     )
 
-    foreach ($user in $Usernames) {
-        Write-Host "`nProcessing user: $user" -ForegroundColor Cyan
+    # ✅ Check connection
+    try {
+        $null = Invoke-PveApi -Method GET -Path "/version" -ErrorAction Stop
+    }
+    catch {
+        throw "No active Proxmox session found. Run Connect-PveCluster first."
+    }
 
-        # Get all VMs
-        $vms = $PveClient.Nodes().GetVirtualMachines()
+    Write-Host "Connected to Proxmox API" -ForegroundColor Green
 
-        # Filter VMs by username prefix
-        $matchingVMs = $vms | Where-Object {
-            $_.name -like "$user-*"
-        }
+    # Get nodes
+    $nodes = (Invoke-PveApi -Method GET -Path "/nodes").data
 
-        if (-not $matchingVMs) {
-            Write-Warning "No VMs found for $user"
-            continue
-        }
+    foreach ($nodeObj in $nodes) {
+        $node = $nodeObj.node
+        Write-Host "`nChecking node: $node" -ForegroundColor Cyan
 
-        foreach ($vm in $matchingVMs) {
-            $vmid = $vm.vmid
-            $node = $vm.node
+        $vms = (Invoke-PveApi -Method GET -Path "/nodes/$node/qemu").data
 
-            Write-Host "Stopping VM: $($vm.name) (VMID: $vmid)" -ForegroundColor Yellow
+        foreach ($vm in $vms) {
+            if (-not $vm.name) { continue }
 
-            try {
-                # Attempt graceful shutdown
-                $PveClient.Nodes($node).Qemu($vmid).StatusShutdown().Post() | Out-Null
-            }
-            catch {
-                Write-Warning "Shutdown request failed for VMID $vmid"
-            }
+            foreach ($user in $Usernames) {
+                if ($vm.name -like "$user-RBFE-*") {
 
-            Start-Sleep -Seconds $ShutdownWaitSeconds
+                    $vmid = $vm.vmid
+                    Write-Host "Processing VM: $($vm.name) (VMID: $vmid)" -ForegroundColor Yellow
 
-            # Refresh state
-            $status = $PveClient.Nodes($node).Qemu($vmid).StatusCurrent().Get()
+                    # Shutdown
+                    if ($WhatIf) {
+                        Write-Host "[WhatIf] Would shutdown VM: $vmid"
+                    }
+                    else {
+                        try {
+                            Invoke-PveApi -Method POST -Path "/nodes/$node/qemu/$vmid/status/shutdown" | Out-Null
+                        }
+                        catch {
+                            Write-Warning "Shutdown failed: $vmid"
+                        }
+                    }
 
-            if ($status.status -ne "stopped") {
-                Write-Host "VM still running, forcing stop: $vmid" -ForegroundColor DarkYellow
-                try {
-                    $PveClient.Nodes($node).Qemu($vmid).StatusStop().Post() | Out-Null
+                    Start-Sleep -Seconds $ShutdownWaitSeconds
+
+                    # Check status
+                    $status = (Invoke-PveApi -Method GET -Path "/nodes/$node/qemu/$vmid/status/current").data.status
+
+                    if ($status -ne "stopped") {
+                        if ($WhatIf) {
+                            Write-Host "[WhatIf] Would force stop VM: $vmid"
+                        }
+                        else {
+                            Write-Host "Force stopping VM: $vmid" -ForegroundColor DarkYellow
+                            try {
+                                Invoke-PveApi -Method POST -Path "/nodes/$node/qemu/$vmid/status/stop" | Out-Null
+                            }
+                            catch {
+                                Write-Warning "Force stop failed: $vmid"
+                            }
+                        }
+
+                        Start-Sleep -Seconds 5
+                    }
+
+                    # Delete
+                    if ($Force -or $status -eq "stopped") {
+                        if ($WhatIf) {
+                            Write-Host "[WhatIf] Would delete VM: $vmid"
+                        }
+                        else {
+                            Write-Host "Deleting VM: $vmid" -ForegroundColor Red
+                            try {
+                                Invoke-PveApi -Method DELETE -Path "/nodes/$node/qemu/$vmid" | Out-Null
+                            }
+                            catch {
+                                Write-Warning "Delete failed: $vmid"
+                            }
+                        }
+                    }
+                    else {
+                        Write-Warning "Skipping delete, VM still running: $vmid"
+                    }
                 }
-                catch {
-                    Write-Warning "Force stop failed for VMID $vmid"
-                }
-
-                Start-Sleep -Seconds 5
-            }
-
-            if ($Force -or $status.status -eq "stopped") {
-                Write-Host "Deleting VM: $($vm.name) (VMID: $vmid)" -ForegroundColor Red
-                try {
-                    $PveClient.Nodes($node).Qemu($vmid).Delete() | Out-Null
-                }
-                catch {
-                    Write-Warning "Failed to delete VMID $vmid"
-                }
-            }
-            else {
-                Write-Warning "Skipping delete, VM still running: $vmid"
             }
         }
     }
 }
-
 
 Export-ModuleMember -Function Remove-RBFEStg2VMs, New-MS203VMs, New-PveVmFromTemplate, Wait-PveTas, New-RBFEStg2VMs, New-RBFEStg1VMs
 
