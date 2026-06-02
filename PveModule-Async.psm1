@@ -532,7 +532,7 @@ function New-RBFEStg1VMs {
 
 function Get-PveTicket {
     param (
-        [string]$PveHost = "https://pvec.tdm.local:8006",
+        [string]$PveHost = "pvec.tdm.local:8006",
         [pscredential]$Credential,
         $ApiToken,
         [switch]$SkipCertificateCheck
