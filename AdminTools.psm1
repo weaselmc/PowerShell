@@ -2575,7 +2575,7 @@ function New-RBFEDipStg2Deployment {
                     NestedVirt = $true
                     Disks = @("rbfe-n1.vhdx","rbfe-n1-1.vhdx","rbfe-n1-2.vhdx","rbfe-n1-3.vhdx","rbfe-n1-4.vhdx")
                     VLANs = @(60,61,62,55)
-                    Switch = "TDM Logical Network"
+                    Switch = "TDM Logical Switch"
                 }
 
                 "RBFE-N2" = @{
@@ -2587,7 +2587,7 @@ function New-RBFEDipStg2Deployment {
                     NestedVirt = $true
                     Disks = @("rbfe-n2.vhdx","rbfe-n2-1.vhdx","rbfe-n2-2.vhdx","rbfe-n2-3.vhdx","rbfe-n2-4.vhdx")
                     VLANs = @(60,61,62,55)
-                    Switch = "TDM Logical Network"
+                    Switch = "TDM Logical Switch"
                 }
 
                 "RBFE-OpenWRT" = @{
@@ -2599,7 +2599,7 @@ function New-RBFEDipStg2Deployment {
                     NestedVirt = $false
                     Disks = @("rbfe-openwrt.vhdx")
                     VLANs = @(60,55)
-                    Switch = "TDM Logical Network"
+                    Switch = "TDM Logical Switch"
                 }
 
                 "RBFE-Server" = @{
@@ -2611,7 +2611,7 @@ function New-RBFEDipStg2Deployment {
                     NestedVirt = $true
                     Disks = @("RBFE-Server.vhdx","RBFE-Server-Data.vhdx")
                     VLANs = @(60)
-                    Switch = "TDM Logical Network"
+                    Switch = "TDM Logical Switch"
                 }
 
                 "RBFE-W11" = @{
@@ -2623,7 +2623,7 @@ function New-RBFEDipStg2Deployment {
                     NestedVirt = $false
                     Disks = @("rbfe-w11.vhdx")
                     VLANs = @(60,10)
-                    Switch = "TDM Logical Network"
+                    Switch = "TDM Logical Switch"
                 }
             }
 
@@ -2730,10 +2730,18 @@ function New-RBFEDipStg2Deployment {
                                
                     $vm = Get-SCVirtualMachine -Name $VmName
                     $cloud = Get-SCCloud -Name "TDM Private Cloud" 
-                    
-                    if (-not $vm) {
-                        Write-Error "VM $VmName not found"
-                        return
+                    $loop = 0
+
+                    while (-not $vm) {
+                        Write-Error "VM $VmName not found yet"
+                        start-sleep -Seconds 5
+                        $vm = Get-SCVirtualMachine -Name $VmName
+                        $loop++
+                        if($loop -gt 11)
+                        {
+                            Write-Error "VM $VmName not found"
+                            exit
+                        }
                     }
 
                     Set-SCVirtualMachine -VM $vm -Cloud $cloud -Owner "TDM\$Prefix"                    
