@@ -2573,6 +2573,7 @@ function New-RBFEDipStg2Deployment {
                     MemoryMaxMB = 24576
                     CPU = 8
                     NestedVirt = $true
+                    DiskController = "SCSI"
                     Disks = @("rbfe-n1.vhdx","rbfe-n1-1.vhdx","rbfe-n1-2.vhdx","rbfe-n1-3.vhdx","rbfe-n1-4.vhdx")
                     VLANs = @(60,61,62,55)
                     Switch = "TDM Logical Switch"
@@ -2585,6 +2586,7 @@ function New-RBFEDipStg2Deployment {
                     MemoryMaxMB = 24576
                     CPU = 8
                     NestedVirt = $true
+                    DiskController = "SCSI"
                     Disks = @("rbfe-n2.vhdx","rbfe-n2-1.vhdx","rbfe-n2-2.vhdx","rbfe-n2-3.vhdx","rbfe-n2-4.vhdx")
                     VLANs = @(60,61,62,55)
                     Switch = "TDM Logical Switch"
@@ -2597,6 +2599,7 @@ function New-RBFEDipStg2Deployment {
                     MemoryMaxMB = 2048
                     CPU = 1
                     NestedVirt = $false
+                    DiskController = "IDE"
                     Disks = @("rbfe-openwrt.vhdx")
                     VLANs = @(60,55)
                     Switch = "TDM Logical Switch"
@@ -2609,6 +2612,7 @@ function New-RBFEDipStg2Deployment {
                     MemoryMaxMB = 24576
                     CPU = 16
                     NestedVirt = $true
+                    DiskController = "SCSI"
                     Disks = @("RBFE-Server.vhdx","RBFE-Server-Data.vhdx")
                     VLANs = @(60)
                     Switch = "TDM Logical Switch"
@@ -2621,6 +2625,7 @@ function New-RBFEDipStg2Deployment {
                     MemoryMaxMB = 8192
                     CPU = 8
                     NestedVirt = $false
+                    DiskController = "SCSI"
                     Disks = @("rbfe-w11.vhdx")
                     VLANs = @(60,10)
                     Switch = "TDM Logical Switch"
@@ -2677,7 +2682,7 @@ function New-RBFEDipStg2Deployment {
                     Add-VMHardDiskDrive `
                         -VMName $newName `
                         -Path $newDisk `
-                        -ControllerType SCSI `
+                        -ControllerType $config.DiskController  `
                         -ControllerNumber 0 `
                         -ControllerLocation $ctrl
 
