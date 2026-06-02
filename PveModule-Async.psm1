@@ -530,5 +530,81 @@ function New-RBFEStg1VMs {
 
 }
 
+function Remove-RBFEStg2VMs {
+    param (
+        [Parameter(Mandatory)]
+        [string[]]$Usernames,
+
+        [Parameter(Mandatory)]
+        $PveClient,
+
+        [int]$ShutdownWaitSeconds = 10,
+        [switch]$Force
+    )
+
+    foreach ($user in $Usernames) {
+        Write-Host "`nProcessing user: $user" -ForegroundColor Cyan
+
+        # Get all VMs
+        $vms = $PveClient.Nodes().GetVirtualMachines()
+
+        # Filter VMs by username prefix
+        $matchingVMs = $vms | Where-Object {
+            $_.name -like "$user-*"
+        }
+
+        if (-not $matchingVMs) {
+            Write-Warning "No VMs found for $user"
+            continue
+        }
+
+        foreach ($vm in $matchingVMs) {
+            $vmid = $vm.vmid
+            $node = $vm.node
+
+            Write-Host "Stopping VM: $($vm.name) (VMID: $vmid)" -ForegroundColor Yellow
+
+            try {
+                # Attempt graceful shutdown
+                $PveClient.Nodes($node).Qemu($vmid).StatusShutdown().Post() | Out-Null
+            }
+            catch {
+                Write-Warning "Shutdown request failed for VMID $vmid"
+            }
+
+            Start-Sleep -Seconds $ShutdownWaitSeconds
+
+            # Refresh state
+            $status = $PveClient.Nodes($node).Qemu($vmid).StatusCurrent().Get()
+
+            if ($status.status -ne "stopped") {
+                Write-Host "VM still running, forcing stop: $vmid" -ForegroundColor DarkYellow
+                try {
+                    $PveClient.Nodes($node).Qemu($vmid).StatusStop().Post() | Out-Null
+                }
+                catch {
+                    Write-Warning "Force stop failed for VMID $vmid"
+                }
+
+                Start-Sleep -Seconds 5
+            }
+
+            if ($Force -or $status.status -eq "stopped") {
+                Write-Host "Deleting VM: $($vm.name) (VMID: $vmid)" -ForegroundColor Red
+                try {
+                    $PveClient.Nodes($node).Qemu($vmid).Delete() | Out-Null
+                }
+                catch {
+                    Write-Warning "Failed to delete VMID $vmid"
+                }
+            }
+            else {
+                Write-Warning "Skipping delete, VM still running: $vmid"
+            }
+        }
+    }
+}
+
+
 Export-ModuleMember -Function New-MS203VMs, New-PveVmFromTemplate, Wait-PveTas, New-RBFEStg2VMs, New-RBFEStg1VMs
 
