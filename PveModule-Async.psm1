@@ -544,7 +544,7 @@ function Get-PveTicket {
     else {
         return Connect-PveCluster -HostsAndPorts $PveHost -Credentials $Credential -SkipCertificateCheck:$SkipCertificateCheck
     }
-}`
+}
 
 function Remove-RBFEStg2VMs {
     param (
