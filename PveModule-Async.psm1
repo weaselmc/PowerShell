@@ -606,5 +606,5 @@ function Remove-RBFEStg2VMs {
 }
 
 
-Export-ModuleMember -Function New-MS203VMs, New-PveVmFromTemplate, Wait-PveTas, New-RBFEStg2VMs, New-RBFEStg1VMs
+Export-ModuleMember -Function Remove-RBFEStg2VMs, New-MS203VMs, New-PveVmFromTemplate, Wait-PveTas, New-RBFEStg2VMs, New-RBFEStg1VMs
 
