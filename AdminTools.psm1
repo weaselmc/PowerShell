@@ -75,9 +75,28 @@
             $mLastname=$Lastname -replace $pattern
             
             #If a user has a last name shorter than 5 characters, then the username will be modified to have more username characters
+            $FirstnameLength = $mFirstname.Length          
             $LastnameLength = $mLastname.Length
-
-            if ($LastnameLength -lt 5)
+            
+            if ($FirstnameLength -eq 0 -and $LastnameLength -eq 0)
+            {
+                throw "Cannot generate username. Firstname and lastname are empty."
+            }           
+            elseif ($FirstnameLength -eq 0)
+            {
+                if ($LastnameLength -gt 6)
+                {
+                    $LastnameLength = 6
+                }
+            }
+            elseif ($LastnameLength -eq 0)
+            {
+                if ($FirstnameLength -gt 6)
+                {
+                    $FirstnameLength = 6
+                }
+            }
+            elseif ($LastnameLength -lt 5)
             {
                 if($Firstname.Length + $LastnameLength -lt 6)
                 {
@@ -98,11 +117,23 @@
             $Domain = Get-ADDomain "tdm.local" #specify option
             $NU = $null            
             while ($Notunique -eq $true)
-            {
-                $Username = $mLastname.substring(0,$LastnameLength) + $mFirstname.substring(0,$FirstnameLength)
+            {   
+                if ($FirstnameLength -eq 0)
+                {
+                    $Username = $mLastname.Substring(0,$LastnameLength)
+                }
+                elseif ($LastnameLength -eq 0)
+                {
+                    $Username = $mFirstname.Substring(0,$FirstnameLength)
+                }
+                else
+                {
+                    $Username = $mLastname.Substring(0,$LastnameLength) +
+                                $mFirstname.Substring(0,$FirstnameLength)
+                }
+
                 try{
-                    $NU = Get-ADUser -Identity "$Username" -Properties Description -ErrorAction SilentlyContinue
-                    
+                    $NU = Get-ADUser -Identity "$Username" -Properties Description -ErrorAction SilentlyContinue                    
                 }
                 Catch
                 {
@@ -140,7 +171,7 @@
                     $sou = Get-ADOrganizationalUnit -Filter {Name -eq $s}
                     $Fullname = "$Firstname "
                     if(-not [string]::IsNullOrEmpty($PreferredName)) {$Fullname += "[$PreferredName] "}
-                    if(-not [string]::IsNullOrEmpty($MiddleName)) {$Fullname += "($MiddleName) "}
+                    #if(-not [string]::IsNullOrEmpty($MiddleName)) {$Fullname += "($MiddleName) "}
                     $Fullname +="$Lastname"
                     $Description = $StudentID + " " + $Fullname + " " + $Group
                     if ([string]::IsNullOrEmpty($sou)){
@@ -233,10 +264,13 @@
                         }
                     else 
                     {                        
-                        $NU = $null
+                        $NU = $null                        
+                        if (($LastnameLength -eq 0) -and ($FirstnameLength -eq $mFirstname.Length))
+                        {
+                            throw "Unable to generate unique username for $Description."
+                        }
                         $LastnameLength = $LastnameLength -1
-                        $FirstnameLength = $FirstnameLength +1
-                        #what happens if no characters are left?
+                        $FirstnameLength = $FirstnameLength +1                        
                         }
                 }
             }
