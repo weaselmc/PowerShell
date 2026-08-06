@@ -23,7 +23,7 @@ $Jobs = foreach ($Computer in $Computers) {
 
         param($Computer,$Source,$LogFolder)
 
-        $Destination = "\\$Computer\D$\LabImages"
+        $Destination = "\\$Computer\D$\WinServer2022 Images"
 
         if (-not (Test-Connection $Computer -Count 1 -Quiet)) {
             return "$Computer : OFFLINE"
