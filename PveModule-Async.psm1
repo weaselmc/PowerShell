@@ -735,5 +735,210 @@ Supports parallel execution using Job / ThreadJob.
     }
 }
 
-Export-ModuleMember -Function Remove-RBFEStg2VMs, New-MS203VMs, New-PveVmFromTemplate, Wait-PveTas, New-RBFEStg2VMs, New-RBFEStg1VMs
+function Remove-RBFEStg1VMs {
+<#
+.SYNOPSIS
+Remove all Stage 2 RBFE VMs for a list of users.
+
+.DESCRIPTION
+Finds VMs using naming convention "<UserName>-RBFE-*"
+Stops them (graceful → force), then deletes them.
+Supports parallel execution using Job / ThreadJob.
+
+#>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string[]]$Usernames,
+
+        [string]$PveHost="pvec.tdm.local:8006",
+        [pscredential]$Credential,
+        [string]$ApiToken,
+
+        [switch]$SkipCertificateCheck,
+
+        [ValidateSet('Sync','ThreadJob','Job')]
+        [string]$Completion = 'ThreadJob',
+
+        [int]$TaskTimeoutSeconds = 600,
+
+        [switch]$Force,
+        [switch]$WhatIf
+    )
+
+    Test-ModuleExists -Name 'Corsinvest.ProxmoxVE.Api'
+
+    # Connect once (for discovery only)
+    if ($ApiToken) {
+        $PveTicket = Connect-PveCluster -HostsAndPorts $PveHost -ApiToken $ApiToken -SkipCertificateCheck:$SkipCertificateCheck
+    }
+    else {
+        if (-not $Credential) { $Credential = Get-Credential }
+        $PveTicket = Connect-PveCluster -HostsAndPorts $PveHost -Credentials $Credential -SkipCertificateCheck:$SkipCertificateCheck
+    }
+
+    # Get ALL VMs once
+    $vmListResp = Invoke-PveRestApi -PveTicket $PveTicket -Method Get -Resource '/cluster/resources' -Parameters @{ type = 'vm' }
+    if (-not $vmListResp.IsSuccessStatusCode) {
+        throw "Failed to list VMs: $($vmListResp.ReasonPhrase)"
+    }
+
+    $vmList = @($vmListResp.Response.data)
+
+    # Filter matching VMs
+    $targets = foreach ($vm in $vmList) {
+        if (-not $vm.name) { continue }
+
+        if ($vm.name -like "*-Stg1-RBFE-*") {
+            [pscustomobject]@{
+                Name = $vm.name
+                VMID = $vm.vmid
+                Node = $vm.node
+            }
+        }
+    }
+
+    if (-not $targets) {
+        Write-Warning "No matching RBFE Stage 1 VMs found."
+        return
+    }
+
+    Write-Host "Found $($targets.Count) VM(s) to remove." -ForegroundColor Yellow
+
+    # Worker scriptblock (runs per VM)
+    $worker = {
+        param(
+            $vm,
+            $PveHost,
+            $Credential,
+            $ApiToken,
+            $SkipCertificateCheck,
+            $TaskTimeoutSeconds,
+            $Force,
+            $WhatIf
+        )
+
+        Import-Module Corsinvest.ProxmoxVE.Api -ErrorAction Stop
+
+        # Wait helper (same as your create function)
+        function Wait-PveTask {
+            param(
+                [object]$Ticket,
+                [string]$Node,
+                [string]$UPID,
+                [int]$TimeoutSeconds = 600
+            )
+
+            $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+
+            do {
+                $statusResp = Invoke-PveRestApi -PveTicket $Ticket -Method Get -Resource "/nodes/$Node/tasks/$UPID/status"
+                $data = $statusResp.Response.data
+
+                if ($data.status -eq 'stopped') {
+                    if ($data.exitstatus -eq 'OK') { return }
+                    throw "Task failed: $($data.exitstatus)"
+                }
+
+                Start-Sleep -Seconds 3
+            } while ((Get-Date) -lt $deadline)
+
+            throw "Timeout waiting for task $UPID"
+        }
+
+        # Connect inside job (same as your working pattern)
+        if ($ApiToken) {
+            $PveTicket = Connect-PveCluster -HostsAndPorts $PveHost -ApiToken $ApiToken -SkipCertificateCheck:$SkipCertificateCheck
+        } else {
+            $PveTicket = Connect-PveCluster -HostsAndPorts $PveHost -Credentials $Credential -SkipCertificateCheck:$SkipCertificateCheck
+        }
+
+        $node = $vm.Node
+        $vmid = $vm.VMID
+
+        if ($WhatIf) {
+            return "[WhatIf] Would remove VM $($vm.Name)"
+        }
+
+        # -------------------
+        # Shutdown
+        # -------------------
+        try {
+            $resp = Invoke-PveRestApi -PveTicket $PveTicket -Method Create -Resource "/nodes/$node/qemu/$vmid/status/shutdown"
+            if ($resp.Response.data) {
+                Wait-PveTask -Ticket $PveTicket -Node $node -UPID $resp.Response.data -TimeoutSeconds $TaskTimeoutSeconds
+            }
+        } catch {
+            Write-Verbose "Shutdown failed: $vmid"
+        }
+
+        # -------------------
+        # Check status
+        # -------------------
+        $statusResp = Invoke-PveRestApi -PveTicket $PveTicket -Method Get -Resource "/nodes/$node/qemu/$vmid/status/current"
+        $status = $statusResp.Response.data.status
+
+        # -------------------
+        # Force stop (if needed)
+        # -------------------
+        if ($status -ne "stopped") {
+            try {
+                $resp = Invoke-PveRestApi -PveTicket $PveTicket -Method Create -Resource "/nodes/$node/qemu/$vmid/status/stop"
+                if ($resp.Response.data) {
+                    Wait-PveTask -Ticket $PveTicket -Node $node -UPID $resp.Response.data -TimeoutSeconds $TaskTimeoutSeconds
+                }
+            } catch {
+                throw "Failed to stop VM $vmid"
+            }
+        }
+
+        # -------------------
+        # Delete
+        # -------------------
+        try {
+            $resp = Invoke-PveRestApi -PveTicket $PveTicket -Method Delete -Resource "/nodes/$node/qemu/$vmid"
+            if ($resp.Response.data) {
+                Wait-PveTask -Ticket $PveTicket -Node $node -UPID $resp.Response.data -TimeoutSeconds $TaskTimeoutSeconds
+            }
+        } catch {
+            throw "Failed to delete VM $vmid"
+        }
+
+        return [pscustomobject]@{
+            Name   = $vm.Name
+            VMID   = $vm.VMID
+            Node   = $vm.Node
+            Result = "Deleted"
+        }
+    }
+
+    # -------------------
+    # Execution modes
+    # -------------------
+    $jobs = @()
+
+    foreach ($vm in $targets) {
+        switch ($Completion) {
+            'ThreadJob' {
+                $jobs += Start-ThreadJob -ArgumentList $vm,$PveHost,$Credential,$ApiToken,$SkipCertificateCheck,$TaskTimeoutSeconds,$Force,$WhatIf -ScriptBlock $worker
+            }
+            'Job' {
+                $jobs += Start-Job -ArgumentList $vm,$PveHost,$Credential,$ApiToken,$SkipCertificateCheck,$TaskTimeoutSeconds,$Force,$WhatIf -ScriptBlock $worker
+            }
+            'Sync' {
+                & $worker $vm $PveHost $Credential $ApiToken $SkipCertificateCheck $TaskTimeoutSeconds $Force $WhatIf
+            }
+        }
+    }
+
+    if ($Completion -ne 'Sync') {
+        Wait-Job $jobs
+        $results = $jobs | Receive-Job -AutoRemoveJob
+
+        $results | Format-Table Name, VMID, Node, Result -AutoSize
+        return $results
+    }
+}
+
+Export-ModuleMember -Function Remove-RBFEStg1VMs, Remove-RBFEStg2VMs, New-MS203VMs, New-PveVmFromTemplate, Wait-PveTas, New-RBFEStg2VMs, New-RBFEStg1VMs
 
