@@ -748,9 +748,7 @@ Supports parallel execution using Job / ThreadJob.
 #>
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory)]
-        [string[]]$Usernames,
-
+        
         [string]$PveHost="pvec.tdm.local:8006",
         [pscredential]$Credential,
         [string]$ApiToken,
