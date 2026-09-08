@@ -938,5 +938,49 @@ Supports parallel execution using Job / ThreadJob.
     }
 }
 
+function Get-PveVlanUsage {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [object]$PveTicket,
+
+        [int]$Vlan
+    )
+
+    $results = foreach ($vm in (
+        Invoke-PveRestApi `
+            -PveTicket $PveTicket `
+            -Method Get `
+            -Resource '/cluster/resources' `
+            -Parameters @{ type = 'vm' }
+    ).Response.data) {
+
+        $cfg = (
+            Invoke-PveRestApi `
+                -PveTicket $PveTicket `
+                -Method Get `
+                -Resource "/nodes/$($vm.node)/qemu/$($vm.vmid)/config"
+        ).Response.data
+
+        foreach ($prop in $cfg.PSObject.Properties) {
+            if ($prop.Name -match '^net\d+$' -and $prop.Value -match 'tag=(\d+)') {
+                [PSCustomObject]@{
+                    VLAN = [int]$matches[1]
+                    VMID = $vm.vmid
+                    Name = $vm.name
+                    Node = $vm.node
+                    NIC  = $prop.Name
+                }
+            }
+        }
+    }
+
+    if ($PSBoundParameters.ContainsKey('Vlan')) {
+        $results = $results | Where-Object VLAN -eq $Vlan
+    }
+
+    $results | Sort-Object VLAN, Name
+}
+
 Export-ModuleMember -Function Remove-RBFEStg1VMs, Remove-RBFEStg2VMs, New-MS203VMs, New-PveVmFromTemplate, Wait-PveTas, New-RBFEStg2VMs, New-RBFEStg1VMs
 
