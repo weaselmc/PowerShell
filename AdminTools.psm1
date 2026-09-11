@@ -2534,6 +2534,7 @@ Function New-TAFEUserInvitation{
     foreach ($User in $Users) {
         try {
             New-MgInvitation -InvitedUserEmailAddress $User `
+                -InvitedUserType Member `
                 -InviteRedirectUrl "https://portal.azure.com" `
                 -InvitedUserMessageInfo @{
                     CustomizedMessageBody = 
@@ -2545,9 +2546,9 @@ Function New-TAFEUserInvitation{
                         The TDM Network team"
                     MessageLanguage = "en-AU"
                 } `
-                -SendInvitationMessage:$true
+                -SendInvitationMessage:$true            
 
-            Write-Host "✅ Invited $($User.Email)" -ForegroundColor Green
+            Write-Host "✅ Invited $($User.Email)" -ForegroundColor Green            
         }
         catch {
             Write-Host "❌ Failed to invite $($User.Email): $_" -ForegroundColor Red
