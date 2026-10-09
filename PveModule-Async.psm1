@@ -982,5 +982,5 @@ function Get-PveVlanUsage {
     $results | Sort-Object VLAN, Name
 }
 
-Export-ModuleMember -Function Remove-RBFEStg1VMs, Remove-RBFEStg2VMs, New-MS203VMs, New-PveVmFromTemplate, Wait-PveTas, New-RBFEStg2VMs, New-RBFEStg1VMs
+Export-ModuleMember -Function Remove-RBFEStg1VMs, Remove-RBFEStg2VMs, New-MS203VMs, New-PveVmFromTemplate, Wait-PveTas, New-RBFEStg2VMs, New-RBFEStg1VMs, Get-PveVlanUsage
 
