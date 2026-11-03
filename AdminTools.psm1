@@ -2869,7 +2869,7 @@ function New-RBFEAdvDipStg2Deployment {
 
             # VM definitions with memory ranges
             $vms = @{
-                "RBFE-N1" = @{
+                "RBFE25-N1" = @{
                     Generation = 2
                     MemoryStartupMB = 16384
                     MemoryMinMB = 4096
@@ -2877,13 +2877,12 @@ function New-RBFEAdvDipStg2Deployment {
                     CPU = 8
                     NestedVirt = $true
                     DiskController = "SCSI"
-                    Disks = @("\RBFE25-N1\Virtual Hard
-                                Disksrbfe-n1.vhdx","rbfe-n1-1.vhdx","rbfe-n1-2.vhdx","rbfe-n1-3.vhdx","rbfe-n1-4.vhdx")
+                    Disks = @("rbfe25-n1.vhdx","rbfe25-n1-1.vhdx","rbfe25-n1-2.vhdx","rbfe25-n1-3.vhdx","rbfe25-n1-4.vhdx")
                     VLANs = @(60,61,62,55)
                     Switch = "TDM Logical Switch"
                 }
 
-                "RBFE-N2" = @{
+                "RBFE25-N2" = @{
                     Generation = 2
                     MemoryStartupMB = 16384
                     MemoryMinMB = 4096
@@ -2891,7 +2890,7 @@ function New-RBFEAdvDipStg2Deployment {
                     CPU = 8
                     NestedVirt = $true
                     DiskController = "SCSI"
-                    Disks = @("rbfe-n2.vhdx","rbfe-n2-1.vhdx","rbfe-n2-2.vhdx","rbfe-n2-3.vhdx","rbfe-n2-4.vhdx")
+                    Disks = @("rbfe25-n2.vhdx","rbfe25-n2-1.vhdx","rbfe25-n2-2.vhdx","rbfe25-n2-3.vhdx","rbfe25-n2-4.vhdx")
                     VLANs = @(60,61,62,55)
                     Switch = "TDM Logical Switch"
                 }                
